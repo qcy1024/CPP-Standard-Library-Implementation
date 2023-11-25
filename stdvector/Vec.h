@@ -13,13 +13,21 @@ public:
 	//cap - elements时，若两个都是nullptr，结果值是0.
 	Vec() : elements(nullptr), firstFree(nullptr), cap(nullptr) {};
 
+	//拷贝构造与拷贝赋值运算符
+	Vec(const Vec& _vec);
+	Vec& operator = (const Vec& _vec);
+	//移动构造和移动赋值运算符
+	Vec(Vec&& _vec);
+	Vec& operator = (Vec&& _vec);
+
 
 	void push_back(const T& _data);
+	void clear();
 	T& operator [] (int i) { return elements[i]; };
 	
 
-	size_t size() { return firstFree - elements; };
-	size_t capacity() { return cap - elements; };
+	size_t size() const { return firstFree - elements; };
+	size_t capacity() const { return cap - elements; };
 	
 
 //private
@@ -41,6 +49,53 @@ public:
 	void Free();
 };
 
+template<typename T> 
+Vec<T>::Vec(const Vec& _vec)
+{
+	elements = alloc.allocate(_vec.capacity());
+	firstFree = std::uninitialized_copy(_vec.elements, _vec.firstFree, elements);
+	cap = elements + _vec.capacity();
+	
+}
+
+template<typename T>
+Vec<T>& Vec<T>::operator = (const Vec& _vec)
+{
+	size_t newCapacity = _vec.capacity();
+	T* newElements = alloc.allocate(newCapacity);
+	T* newFirstFree = std::uninitialized_copy(_vec.elements, _vec.firstFree, newElements);
+	T* newCap = newElements + newCapacity;
+	Free();
+	elements = newElements;
+	firstFree = newFirstFree;
+	cap = newCap;
+	return *this;
+}
+
+template <typename T>
+Vec<T>::Vec(Vec&& _vec) : elements(_vec.elements),firstFree(_vec.firstFree),cap(_vec.cap)
+{
+	std::cout << "move constructor" << std::endl;
+	//保证移后源是有效的状态
+	_vec.elements = _vec.firstFree = _vec.cap = nullptr;
+}
+
+template <typename T>
+Vec<T>& Vec<T>::operator = (Vec&& _vec)
+{
+	std::cout << "move operator = " << std::endl;
+	T* newElements = _vec.elements;
+	T* newFirstFree = _vec.firstFree;
+	T* newCap = _vec.cap;
+	//别忘了释放 = 运算符左边对象的资源
+	Free();
+	_vec.elements = _vec.firstFree = _vec.cap = nullptr;
+	elements = newElements;
+	firstFree = newFirstFree;
+	cap = newCap;
+	return *this;
+}
+
 template <typename T>
 void Vec<T>::push_back(const T& _data)
 {
@@ -49,13 +104,25 @@ void Vec<T>::push_back(const T& _data)
 }
 
 template <typename T>
+void Vec<T>::clear()
+{
+	Free();
+	elements = firstFree = cap = nullptr;
+}
+
+template <typename T>
 void Vec<T>::reallocate()
 {
 	size_t newCapacity = size() ? size() * 2 : 1;
 	T* newElements = alloc.allocate(newCapacity);
-	T* newFirstFree = std::uninitialized_copy(elements, firstFree, newElements);
-	T* newCap = newElements + newCapacity;
+	T* newFirstFree = newElements;
+	for (T* it = elements; it != firstFree; ++it)
+	{
+		alloc.construct(newFirstFree++, std::move(*it));
+	}
+	//移动后马上销毁移后源
 	Free();
+	T* newCap = newElements + newCapacity;
 	elements = newElements;
 	firstFree = newFirstFree;
 	cap = newCap;
@@ -80,5 +147,7 @@ void Vec<T>::check()
 	if (firstFree == cap)
 		reallocate();
 }
+
+
 
 #endif // !__VEC__H
