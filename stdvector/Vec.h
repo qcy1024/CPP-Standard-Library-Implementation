@@ -8,6 +8,10 @@ template <typename T>
 class Vec
 {
 public:
+	//Vec<T>的迭代器类型暂时不知道怎么实现的，先假设就是T*
+	typedef T* iterator;
+	//标准库std::vector<T>::size_type暂时不知道怎么实现的，先假设为size_t
+	typedef typename size_t size_type;
 
 	/*接口*/
 	//cap - elements时，若两个都是nullptr，结果值是0.
@@ -24,8 +28,12 @@ public:
 	void push_back(const T& _data);
 	void clear();
 	T& operator [] (int i) { return elements[i]; };
-	
+	T& front() const { return *elements; };
+	T& back() const { return *(elements + size() - 1); };
 
+
+	T* begin() const { return elements; };
+	T* end() const { return firstFree; };
 	size_t size() const { return firstFree - elements; };
 	size_t capacity() const { return cap - elements; };
 	
@@ -45,10 +53,11 @@ public:
 	void reallocate();
 	//检查此时Vec的连续空间是否已满，若已满，就调用reallocate()
 	void check();
-	//销毁对象并释放空间
+	//销毁对象并释放空间.Free()会析构size()大小的所有对象，以及回收已经分配的capacity()大小的内存空间。
 	void Free();
 };
 
+//拷贝构造函数
 template<typename T> 
 Vec<T>::Vec(const Vec& _vec)
 {
@@ -58,6 +67,7 @@ Vec<T>::Vec(const Vec& _vec)
 	
 }
 
+//拷贝复制运算符
 template<typename T>
 Vec<T>& Vec<T>::operator = (const Vec& _vec)
 {
@@ -72,6 +82,7 @@ Vec<T>& Vec<T>::operator = (const Vec& _vec)
 	return *this;
 }
 
+//移动构造函数
 template <typename T>
 Vec<T>::Vec(Vec&& _vec) : elements(_vec.elements),firstFree(_vec.firstFree),cap(_vec.cap)
 {
@@ -80,6 +91,7 @@ Vec<T>::Vec(Vec&& _vec) : elements(_vec.elements),firstFree(_vec.firstFree),cap(
 	_vec.elements = _vec.firstFree = _vec.cap = nullptr;
 }
 
+//移动赋值运算符
 template <typename T>
 Vec<T>& Vec<T>::operator = (Vec&& _vec)
 {
@@ -110,6 +122,38 @@ void Vec<T>::clear()
 	elements = firstFree = cap = nullptr;
 }
 
+template <typename T>
+bool operator == (const Vec<T>& lhs, const Vec<T>& rhs)
+{
+	if (lhs.size() != rhs.size())
+		return false;
+	T* it1 = lhs.begin();
+	T* it2 = rhs.begin();
+	T* itEnd1 = lhs.end();
+	T* itEnd2 = rhs.end();
+	while (it1 != itEnd1 && it2 != itEnd2 && *it1 == *it2)
+	{
+		it1++;
+		it2++;
+	}
+	if (it1 == itEnd1 && it2 == itEnd2) return true;
+	return false;
+	//下面注释掉的方法要求T类型定义了!=运算符
+ 	//for (; it1 != lhs.end() && it2 != rhs.end();  ++it1, ++it2)
+	//{
+	//	if (*it1 != *it2) return false;
+	//}
+}
+
+template <typename T> 
+bool operator != (const Vec<T>& lhs, const Vec<T>& rhs)
+{
+	//用==运算符实现!=运算符
+	return !(lhs == rhs);
+}
+
+
+/*以下是非接口的类工具函数*/
 template <typename T>
 void Vec<T>::reallocate()
 {
