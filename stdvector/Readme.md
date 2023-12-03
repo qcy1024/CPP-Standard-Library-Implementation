@@ -76,5 +76,7 @@ public:
 2）Vec(const Vec& _vec) ， 拷贝构造。
 
 3）Vec& operator = (const Vec& _vec) ，拷贝复制运算符，能正确地处理自赋值。
+
 4）Vec(Vec&& _vec) ， 移动构造，保证移后源有效，可以对移后源进行赋值或销毁操作。
+
 5）Vec& operator = (Vec&& _vec) ， 移动赋值运算符，移后源有效。
