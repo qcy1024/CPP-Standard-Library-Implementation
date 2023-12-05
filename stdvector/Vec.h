@@ -2,7 +2,7 @@
 #define __VEC__H
 
 #include <memory>
-
+#include <iostream>	//调试用，打印一些信息
 
 template <typename T>
 class Vec
@@ -24,6 +24,11 @@ public:
 	Vec(Vec&& _vec);
 	Vec& operator = (Vec&& _vec);
 
+	//析构函数
+	~Vec();
+
+	void resize(size_type n);
+	void resize(size_type n, const T& value);
 
 	void push_back(const T& _data);
 	void clear();
@@ -36,6 +41,7 @@ public:
 	T* end() const { return firstFree; };
 	size_t size() const { return firstFree - elements; };
 	size_t capacity() const { return cap - elements; };
+	bool empty() const { return elements == firstFree; };
 	
 
 //private
@@ -53,6 +59,8 @@ public:
 	void reallocate();
 	//检查此时Vec的连续空间是否已满，若已满，就调用reallocate()
 	void check();
+	//检查此时Vec的容量是否大于等于n，若不是，则不断调用reallocate()，直到容量大于等于n
+	void check_n_cap(size_type n);
 	//销毁对象并释放空间.Free()会析构size()大小的所有对象，以及回收已经分配的capacity()大小的内存空间。
 	void Free();
 };
@@ -108,6 +116,61 @@ Vec<T>& Vec<T>::operator = (Vec&& _vec)
 	return *this;
 }
 
+template<typename T>
+Vec<T>::~Vec()
+{
+	Free();
+}
+
+//resize函数的实现：当n小于当前的size()时，销毁多余的元素；当n大于当前的size()时，构造缺少的元素
+template<typename T>
+void Vec<T>::resize(size_type n)
+{
+	if (n < size())
+	{
+		T* flag = &elements[n];
+		while (firstFree != flag)
+		{
+			alloc.destroy(--firstFree);
+		}
+	}
+	else if (n > size())
+	{
+		check_n_cap(n);
+		size_type numRest = n - size();
+		while (numRest != 0)
+		{
+			//construct的第二个参数缺省时，按默认构造来初始化元素。这里是按int的默认构造函数初始化元素。
+			alloc.construct(firstFree++);
+			numRest--;
+		}
+	}
+}
+
+template <typename T>
+void Vec<T>::resize(size_type n, const T& value)
+{
+	if (n < size())
+	{
+		T* flag = &elements[n];
+		while (firstFree != flag)
+		{
+			alloc.destroy(--firstFree);
+		}
+	}
+	else if (n > size())
+	{
+		check_n_cap(n);
+		size_type numRest = n - size();
+		while (numRest != 0)
+		{
+			//construct的第二个参数缺省时，按默认构造来初始化元素。这里是按int的默认构造函数初始化元素。
+			alloc.construct(firstFree++,value);
+			numRest--;
+		}
+	}
+}
+
 template <typename T>
 void Vec<T>::push_back(const T& _data)
 {
@@ -157,7 +220,9 @@ bool operator != (const Vec<T>& lhs, const Vec<T>& rhs)
 template <typename T>
 void Vec<T>::reallocate()
 {
-	size_t newCapacity = size() ? size() * 2 : 1;
+	//std::cout << "在reallocate中，计算newCapacity之前，capacity()为" << capacity() << std::endl;
+	size_type newCapacity = capacity() ? capacity() * 2 : 1;
+	//std::cout << "在reallocate中，newCapacity = " << newCapacity << std::endl;
 	T* newElements = alloc.allocate(newCapacity);
 	T* newFirstFree = newElements;
 	for (T* it = elements; it != firstFree; ++it)
@@ -170,6 +235,7 @@ void Vec<T>::reallocate()
 	elements = newElements;
 	firstFree = newFirstFree;
 	cap = newCap;
+	//std::cout << "在reallocate中，一次重新分配之后，容量是 " << capacity() << std::endl;
 }
 
 template <typename T>
@@ -192,6 +258,19 @@ void Vec<T>::check()
 		reallocate();
 }
 
+template <typename T>
+void Vec<T>::check_n_cap(size_type n)
+{
+	while (capacity() < n)
+	{
+		reallocate();
+		//std::cout << "在check_n_cap中，重新分配了一次，目前容量是" << capacity() << std::endl;
+		//getchar();
+	}
+		
+}
+
 
 
 #endif // !__VEC__H
+
