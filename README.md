@@ -1,2 +1,2 @@
 # CPP-Standard-Library-Implementation
-尝试个人实现一些C++标准库提供的类和类模板。
+I will try to implement some classes and class templates from the standard library, As an exercise to deepen my understanding of the C++ language.
